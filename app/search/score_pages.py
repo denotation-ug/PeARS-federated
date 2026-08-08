@@ -2,10 +2,6 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-import math
-import logging
-logger = logging.getLogger(__name__)
-from time import time
 from os import getenv
 from os.path import dirname, join, realpath
 from itertools import islice
@@ -17,6 +13,8 @@ from joblib import Parallel, delayed
 from scipy.spatial import distance
 from scipy.sparse import load_npz, csr_matrix, vstack
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 from flask import url_for
 from flask import current_app
 from app.extensions import db
@@ -46,9 +44,6 @@ def mk_podsum_matrix(lang):
             podsum.append(s)
             podnames.append(podname)
     return podnames, podsum
-
-
-
 
 
 @timer
@@ -102,10 +97,9 @@ def load_vec_matrix(lang):
 @timer
 def compute_scores(query, query_vectors, lang):
     document_scores = {}
-    m, bins, podnames, urls = load_vec_matrix(lang)
+    m, _, podnames, urls = load_vec_matrix(lang)
     if m is None:
         return document_scores
-    snippet_length = current_app.config['SNIPPET_LENGTH']
     query_vector = np.sum(query_vectors, axis=0)
     
     # Only compute cosines over the dimensions of interest
@@ -130,8 +124,7 @@ def compute_scores(query, query_vectors, lang):
             u.snippet = ''
             snippet_score = 0.0
         else:
-            snippet = ' '.join(u.snippet.split()[:snippet_length])
-            snippet_score = snippet_overlap(query, u.title+' '+snippet)
+            snippet_score = snippet_overlap(query, u.title+' '+u.snippet)
         loc = urlparse(u.url).netloc.split('.')[0]
 
         #Big boost in case the query word is the url
@@ -181,7 +174,7 @@ def output(best_urls, scores):
         url = u.url
         results[url] = u.as_dict()
         results[url]['score'] = scores[i]
-        if not u.allows_reproduction:
+        if not u.allows_reproduction and u.doctype != 'source':
             results[url]['snippet'] = ' '.join(results[url]['snippet'].split()[:snippet_length])
     return results
 
