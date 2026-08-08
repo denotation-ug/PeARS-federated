@@ -173,9 +173,8 @@ class Urls(Base):
             'id': self.id,
             'url': self.url,
             'title': self.title,
-            'snippet': self.snippet,
             'doctype': self.doctype,
-            'vector': self.vector,
+            'snippet': self.snippet,
             'pod': self.pod,
             'notes': self.notes,
             'content': self.content,
@@ -183,7 +182,6 @@ class Urls(Base):
             'share': self.share,
             'contributor': self.contributor,
             'license': self.url_license,
-            'reproduction allowed': self.allows_reproduction,
             'licensing_notes': self.licensing_notes
         }
 

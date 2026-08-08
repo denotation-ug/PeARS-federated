@@ -24,11 +24,13 @@ api = Blueprint('api', __name__, url_prefix='/api')
 dir_path = dirname(dirname(realpath(__file__)))
 pod_dir = getenv("PODS_DIR", join(dir_path, 'pods'))
 
+
 @api.route('/languages/', methods=["GET", "POST"])
 def return_instance_languages():
     """Returns the languages of this instance.
     For use by other PeARS instances."""
     return jsonify(json_list=current_app.config['LANGS'])
+
 
 @api.route('/identity', methods=["GET", "POST"])
 def return_identity_info():
@@ -37,6 +39,7 @@ def return_identity_info():
         "site_topic": current_app.config["SITE_TOPIC"],
         "organization": current_app.config["ORG_NAME"] 
     })
+
 
 @api.route('/signature/<lang>/', methods=["GET", "POST"])
 def return_instance_signature(lang):
@@ -48,6 +51,7 @@ def return_instance_signature(lang):
     signature = np.sum(podsum, axis=0)
     return json.dumps(signature.tolist())
 
+
 @api.route('/search', methods=["GET"])
 def return_query_results():
     """Returns the results for a query in a json format.
@@ -55,6 +59,7 @@ def return_query_results():
     query = request.args.get('q')
     _, results = get_local_search_results(query)
     return jsonify(json_list=results)
+
 
 @api.route('/urls/')
 @check_permissions(login=True, confirmed=True)
@@ -65,7 +70,7 @@ def return_urls():
 @api.route('/get', methods=["GET"])
 def return_specific_url():
     internal_message = ""
-    u = request.args.get('url')
+    u = request.url.split('get?url=')[1]
     entry = db.session.query(Urls).filter_by(url=u).first()
     if not u or not entry:
         abort(404)
@@ -89,3 +94,28 @@ def display_content():
     comment = True if u.startswith('comment') else False
     return render_template('search/display.html', title=url.title, contributor=url.contributor, \
             date=url.date_created, share_url=url.share, content=content, comment=comment)
+
+
+@api.route('/info', methods=["GET"])
+def get_page_info():
+    u = request.url.split('info?url=')[1]
+    url = db.session.query(Urls).filter_by(url=u).first()
+    if not u or not url or (not url.content and url.doctype != 'source'):
+        abort(404)
+    return jsonify(url.serialize)
+
+
+@api.route('/author/<username>/', methods=["GET", "POST"])
+def return_author_pages(username):
+    urls = db.session.query(Urls).filter_by(contributor=username).filter_by(doctype='content').all()
+    if len(urls) == 0:
+        abort(404)
+    return jsonify(json_list=[i.serialize for i in urls])
+
+
+@api.route('/content/', methods=["GET", "POST"])
+def return_content_pages():
+    urls = db.session.query(Urls).filter_by(doctype='content').all()
+    if len(urls) == 0:
+        abort(404)
+    return jsonify(json_list=[i.serialize for i in urls])
