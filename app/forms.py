@@ -62,6 +62,13 @@ class SuggestionForm(FlaskForm):
 
 class WebSourceForm(FlaskForm):
     title = StringField(lazy_gettext('A title for your entry'), [DataRequired(), Length(min=8, max=100, message=lazy_gettext("The title of your entry should have between 4 and 100 characters."))])
+    url = URLField(lazy_gettext('The URL to index'), [DataRequired(), URL()], render_kw={"placeholder": lazy_gettext("Your entry will automatically link to this URL.")})
+    theme = StringField(lazy_gettext('Category'), [DataRequired(), Length(max=50)],  render_kw={"placeholder": lazy_gettext("A category for your URL. Start typing and suggestions will appear, but you can also write your own.")})
+    snippet = TextAreaField(lazy_gettext('Snippet'), [DataRequired(), Length(max=1000)],  render_kw={"placeholder": lazy_gettext("Anything you would like people to know about this resource. (Max 1000 characters.)"), "rows":6})
+    accept_tos = BooleanField(lazy_gettext('I confirm that my entry does not contravene the Terms of Service'), [DataRequired()])
+
+class WebCommentaryForm(FlaskForm):
+    title = StringField(lazy_gettext('A title for your entry'), [DataRequired(), Length(min=8, max=100, message=lazy_gettext("The title of your entry should have between 4 and 100 characters."))])
     related_url = URLField(lazy_gettext('The URL you are writing about'), [DataRequired(), URL()], render_kw={"placeholder": lazy_gettext("Your entry will automatically link to this URL.")})
     theme = StringField(lazy_gettext('Category'), [DataRequired(), Length(max=50)],  render_kw={"placeholder": lazy_gettext("A category for your URL. Start typing and suggestions will appear, but you can also write your own.")})
     description = TextAreaField(lazy_gettext('Description'), [DataRequired(), Length(max=10000)],  render_kw={"placeholder": lazy_gettext("Anything you would like people to know about this resource. (Max 10000 characters.)"), "rows":6})

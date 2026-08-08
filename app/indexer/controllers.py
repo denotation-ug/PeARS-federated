@@ -22,7 +22,7 @@ from app.indexer import mk_page_vector
 from app.utils_db import create_pod_in_db, create_pod_npz_pos, create_or_replace_url_in_db, delete_url_representations, create_suggestion_in_db, check_url_exists
 from app.indexer.access import request_url
 from app.utils import make_slug
-from app.forms import IndexerForm, WebSourceForm, NewContentForm, SuggestionForm
+from app.forms import IndexerForm, WebSourceForm, WebCommentaryForm, NewContentForm, SuggestionForm
 
 app_dir_path = dirname(dirname(realpath(__file__)))
 
@@ -51,7 +51,7 @@ def index():
 
 
 @indexer.route("/write-and-index", methods=["GET"])
-@check_permissions(login=True, confirmed=True, admin=True)
+@check_permissions(login=True, confirmed=True)
 def write_and_index():
     """Displays the indexer page for writing content
     and indexing it on that PeARS instance.
@@ -63,17 +63,34 @@ def write_and_index():
     return render_template("indexer/write_and_index.html", num_entries=num_db_entries, form=form, themes=themes)
 
 
-@indexer.route("/source", methods=["GET"])
-@check_permissions(login=True, confirmed=True, admin=True)
-def write_source_commentary():
-    """Displays the indexer page for writing content
-    and indexing it on that PeARS instance.
+@indexer.route("/comment-and-index", methods=["GET"])
+@check_permissions(login=True, confirmed=True)
+def write_web_commentary():
+    """Displays the indexer page for writing a Web commentary
+    and indexing it on that PeARS instance. The commentary 
+    will appear on a separate page, like other content.
     """
     num_db_entries = len(Urls.query.all())
     form = WebSourceForm(request.form)
     pods = Pods.query.all()
     themes = list({p.name.split('.u.')[0] for p in pods})
     return render_template("indexer/web_commentary.html", num_entries=num_db_entries, form=form, themes=themes)
+
+
+@indexer.route("/add-a-source", methods=["GET"])
+@check_permissions(login=True, confirmed=True)
+def add_source():
+    """Displays the indexer page for adding a source 
+    and a manual snippet, and indexing the entry on 
+    that PeARS instance. The source will appears directly
+    in the search results with its snippet. By default,
+    the snippet is indexed under CC-BY.
+    """
+    num_db_entries = len(Urls.query.all())
+    form = WebSourceForm(request.form)
+    pods = Pods.query.all()
+    themes = list({p.name.split('.u.')[0] for p in pods})
+    return render_template("indexer/web_source.html", num_entries=num_db_entries, form=form, themes=themes)
 
 
 @indexer.route("/suggest", methods=["GET"])
@@ -94,7 +111,7 @@ def suggest():
 
 
 @indexer.route("/url", methods=["POST"])
-@check_permissions(login=True, confirmed=True, admin=True)
+@check_permissions(login=True, confirmed=True)
 def index_from_url():
     """ Route for URL entry form.
     This is to index a URL that the user
@@ -123,7 +140,7 @@ def index_from_url():
 
 
 @indexer.route("/commentary", methods=["POST"])
-@check_permissions(login=True, confirmed=True, admin=True)
+@check_permissions(login=True, confirmed=True)
 def index_from_web_commentary():
     """ Route for web commentary entry form.
     """
@@ -133,7 +150,7 @@ def index_from_web_commentary():
     themes = list({p.name.split('.u.')[0] for p in pods})
     edit = False
 
-    form = WebSourceForm(request.form)
+    form = WebCommentaryForm(request.form)
     if form.validate_on_submit():
         title = request.form.get('title').strip()
         theme = request.form.get('theme').strip()
@@ -160,6 +177,33 @@ def index_from_web_commentary():
         return render_template('indexer/fail.html', messages=messages, title=title, description=snippet, url=url, source='manual')
     return render_template('indexer/web_commentary.html', form=form, themes=themes)
 
+@indexer.route("/source", methods=["POST"])
+@check_permissions(login=True, confirmed=True)
+def index_from_source():
+    """ Route for source indexing.
+    """
+    logger.info("index_from_source")
+    contributor = current_user.username
+    pods = Pods.query.all()
+    themes = list({p.name.split('.u.')[0] for p in pods})
+    form = WebSourceForm(request.form)
+    if form.validate_on_submit():
+        title = request.form.get('title').strip()
+        theme = request.form.get('theme').strip()
+        content = escape(request.form.get('snippet').strip())
+        url = request.form.get('url').strip()
+        logger.debug("Source: %s", url)
+        lang = detect(content)
+        # Hack if language of contribution is not recognized
+        if lang not in current_app.config['LANGS']:
+            lang = current_app.config['LANGS'][0]
+        success, messages, snippet = run_indexer_manual(url, title, theme, lang, url, content, contributor, \
+                '', request.host_url, doctype='source', licensing_notes='Snippet under CC-BY.')
+        if success:
+            return render_template('indexer/success.html', messages=messages, share_url=url, theme=theme, note=snippet)
+        return render_template('indexer/fail.html', messages=messages, title=title, description=snippet, url=url, source='manual')
+    return render_template('indexer/web_source.html', form=form, themes=themes)
+
 
 @indexer.route("/newcontent", methods=["POST"])
 @check_permissions(login=True, confirmed=True)
@@ -184,7 +228,7 @@ def index_from_new_content():
             lang = current_app.config['LANGS'][0]
         if request.referrer and "editcontent?" in request.referrer:
             edit = True
-            url = request.referrer.split("show?url=")[1]
+            url = request.referrer.split("editcontent?url=")[1]
         else:
             url = f"content-{contributor}-{make_slug(title)}"
         c = 2
@@ -443,7 +487,8 @@ def run_indexer_url(url, theme, notes, contributor, host_url):
         messages.extend(request_errors)
     return indexed, messages, share_url
 
-def run_indexer_manual(url, title, theme, lang, share_url, usercontent, contributor, chosen_license, host_url):
+def run_indexer_manual(url, title, theme, lang, share_url, usercontent, contributor, \
+        chosen_license, host_url, doctype='content', licensing_notes=''):
     """ Run the indexer over manually contributed information.
     
     Arguments: a url (internal and bogus, constructed by 'index_from_manual'),
@@ -453,7 +498,6 @@ def run_indexer_manual(url, title, theme, lang, share_url, usercontent, contribu
     logger.info("run_indexer_manual: Running indexer over manually added information.")
     messages = []
     indexed = False
-    doctype = 'content'
     snippet = ''
     notes = None
     img = None
@@ -468,7 +512,7 @@ def run_indexer_manual(url, title, theme, lang, share_url, usercontent, contribu
         snippet = snippet.replace('\r\n', ' ')
         usercontent = usercontent.replace('\r\n', Markup('<br>'))
         create_or_replace_url_in_db(url, title, snippet, doctype, idv, theme, notes,\
-                usercontent, img, share_url, contributor, url_license=chosen_license)
+                usercontent, img, share_url, contributor, url_license=chosen_license, licensing_notes=licensing_notes)
         indexed = True
     else:
         messages.append(gettext("There was a problem indexing your entry. Please check the submitted data."))

@@ -90,7 +90,7 @@ def index():
     emailform = EmailChangeForm()
     usernameform = UsernameChangeForm()
     contributions = []
-    comments = []
+    sources = []
     indexed_urls = []
     short_notes = []
 
@@ -98,23 +98,23 @@ def index():
         if i.url.startswith('content'):
             display_url = join(request.host_url,'api','show?url='+i.url)
             contributions.append([display_url, i.title, i.url])
-        elif i.url.startswith('comment'):
-            display_url = join(request.host_url,'api','show?url='+i.url)
-            comments.append([display_url, i.title, i.url])
+        elif i.doctype == 'source':
+            display_url = join(request.host_url,'api','get?url='+i.url)
+            sources.append([display_url, i.title, i.url])
         else:
             display_url = join(request.host_url,'api','get?url='+i.url)
             indexed_urls.append([display_url, i.title, i.url])
     contributions = contributions[::-1] #reverse from most recent
-    comments = comments[::-1]
+    sources = sources[::-1]
     indexed_urls = indexed_urls[::-1]
-    num_contributions = len(contributions)+len(indexed_urls)+len(comments)
+    num_contributions = len(contributions)+len(indexed_urls)+len(sources)
     for i in db.session.query(Urls).filter(Urls.notes.isnot(None)).all():
         display_url = join(request.host_url,'api','get?url='+i.url)
         notes = ['@'+note.replace('<br>','') for note in i.notes.split('@') if note.startswith(username)]
         note = ' | '.join(notes)
         short_notes.append([display_url, note, i.url])
     return render_template("settings/index.html", username=username, email=email, num_contributions=num_contributions, \
-            contributions=contributions, urls=indexed_urls, comments=comments, notes=short_notes, emailform=emailform, usernameform=usernameform)
+            contributions=contributions, urls=indexed_urls, sources=sources, notes=short_notes, emailform=emailform, usernameform=usernameform)
 
 
 @settings.route("/toggle-theme")
@@ -184,11 +184,11 @@ def edit_content():
     return render_template('indexer/write_and_index.html', num_entries=num_db_entries, form=form, themes=themes)
 
 
-@settings.route('/editcomment', methods=['GET'])
+@settings.route('/editsource', methods=['GET'])
 @check_permissions(login=True, confirmed=True)
-def edit_comment():
+def edit_source():
     '''Open edit page so that user can change their
-    comment.'''
+    snippet for a source.'''
     num_db_entries = len(Urls.query.all())
     username = current_user.username
     u = request.args.get('url')
@@ -202,9 +202,9 @@ def edit_comment():
         return redirect(url.share)
     pods = Pods.query.all()
     themes = list({p.name.split('.u.')[0] for p in pods})
-    description = Markup(url.content.replace('<br>', '\n')).unescape() #unescaping should be safe since escaping will happen again on submit
-    form = WebSourceForm(title=url.title, description=description, related_url=url.share, theme=url.pod.split('.u.')[0], chosen_license=url.url_license)
-    return render_template('indexer/web_commentary.html', num_entries=num_db_entries, form=form, themes=themes)
+    snippet = Markup(url.content.replace('<br>', '\n')).unescape() #unescaping should be safe since escaping will happen again on submit
+    form = WebSourceForm(title=url.title, snippet=snippet, url=url.url, theme=url.pod.split('.u.')[0])
+    return render_template('indexer/web_source.html', num_entries=num_db_entries, form=form, themes=themes)
 
 
 @settings.route('/deletenotes', methods=['GET'])
