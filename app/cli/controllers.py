@@ -265,54 +265,48 @@ def get_links(url):
 
 
 @pears.cli.command('indexwiki')
-@click.argument('folder')
-@click.argument('regex')
+@click.argument('filepath')
 @click.argument('lang')
 @click.argument('contributor')
 @click.argument('host_url')
-def index_wiki(folder, regex, lang, contributor, host_url):
-    '''Index Wikipedia corpus in <doc> format,
-    as obtained from the WikiNLP scripts.
+def index_wiki(filepath, lang, contributor, host_url):
+    '''Index Wikipedia corpus in <doc> format
 
     Parameters
-    - folder: the directory containing your preprocessed documents,
-    as obtained from WikiNLP using wikinlp.categories.CatProcessor
-    (https://github.com/possible-worlds-research/wikinlp). This should
-    be a path ending in 'categories' in your WikiNLP install.
-    - regex: a regex filtering which directories from the categories 
-    folder should be processed. For example, assuming that categories
-    about books have been retrieved, 'Novels_about*' would select the 
-    novels about certain topics.
+    - filepath: the directory containing your preprocessed documents.
     - lang: the language of the Wikipedia you have processed.
     - contributor: the username of the admin indexing the corpus.
     - host_url: the domain of your instance, e.g. https://mypears.org.
 
     '''
-    corpus_files = glob(join(folder, f'*{regex}*', '*.doc.txt'))
-    for filepath in corpus_files:
+    with open(filepath, 'r', encoding='utf-8') as fin:
         print(f">>Processing {filepath}...")
-        with open(filepath, encoding='utf-8') as fin:
-            url = ""
-            title = ""
-            doc = ""
-            theme = filepath.split('/')[-2]
-            theme = theme.replace('_',' ')
-            for l in fin:
-                l=l.rstrip('\n')
-                if l[:4] == "<doc":
-                    m = re.search('url=\"([^\"]*)\"',l)
-                    url = m.group(1)
-                    m = re.search('title=\"([^\"]*)\"',l)
-                    title = m.group(1)
-                elif "</doc" in l:
+        url = ""
+        title = ""
+        doc = ""
+        for l in fin:
+            l=l.rstrip('\n')
+            if l[:4] == "<doc":
+                m = re.search('external_url=\"([^\"]*)\"',l)
+                url = m.group(1)
+                m = re.search('wiki_url=\"([^\"]*)\"',l)
+                snippet_source = m.group(1)
+                m = re.search('title=\"([^\"]*)\"',l)
+                title = m.group(1)
+                m = re.search('category=\"([^\"]*)\"',l)
+                theme = m.group(1).replace(' ','_')
+            elif "</doc" in l:
+                doc = doc.strip()
+                if doc != '':
+                    wiki_license = f" Snippet: Wikipedia CC BY-SA 4. Source: {snippet_source}."
                     print(url,theme,title,doc[:30])
-                    note = ""
-                    if not title.startswith("Talk:"):
-                        index_doc_from_cli(title, doc, theme, lang, contributor, url, note, host_url)
+                    index_doc_from_cli(url, title, theme, lang, url, doc, contributor, None, \
+                            host_url, doctype='url', licensing_notes=wiki_license)
                     doc = ""
                 else:
-                    doc+=l+' '
-
+                    print("WARNING: empty document", url)
+            else:
+                doc+=l+' '
 
 
 ######################

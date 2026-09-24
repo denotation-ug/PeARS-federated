@@ -144,7 +144,7 @@ class Urls(Base):
     contributor = db.Column(db.String(1000))
     url_license = db.Column(db.String(1000))
     allows_reproduction = db.Column(db.Boolean, default=False)
-    licensing_notes = db.Column(db.String(1000))
+    licensing_notes = db.Column(db.String(1000)) #Snippet license if relevant, or e.g. personal communication with site author.
 
     def __init__(self, url=None, title=None, snippet=None, doctype=None, vector=None, pod=None, \
                  notes=None, content=None, img=None, share=None, contributor=None, url_license=None, \

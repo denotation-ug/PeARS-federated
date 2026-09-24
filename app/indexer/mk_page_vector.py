@@ -89,6 +89,7 @@ def compute_vector_local_docs(title, doc, theme, lang, contributor):
     for the user's chosen theme.
     """
     logger.debug("Computing vector for local doc: %s", title)
+    snippet_length = current_app.config['SNIPPET_LENGTH']
     user_dir = join(pod_dir, contributor, lang)
     npz_path = join(user_dir,theme+'.u.'+contributor+'.npz')
     pod_m = load_npz(npz_path)
@@ -97,7 +98,7 @@ def compute_vector_local_docs(title, doc, theme, lang, contributor):
     text = tokenize_text(text, lang)
     pod_m, success = compute_and_stack_new_vec(lang, text, pod_m)
     if doc != "":
-        snippet = doc
+        snippet = ' '.join(doc.split()[:snippet_length]) #snippet_length in number of words
     else:
         snippet = title
     if success:

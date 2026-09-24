@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 import logging
+import re
 from os import getenv
 from os.path import dirname, join, realpath
 from random import shuffle
@@ -129,6 +130,11 @@ def prepare_gui_results(query, results):
                 _instance_info_text = gettext("This result originates from the remote PeARS instance \"{}\" ({}), which is maintained by {}.")
                 r["instance_info_text"] = _instance_info_text.format(r["instance"], r["x_instance_info"]["url"], instance_organization_text)
 
+        r['licensing_link'] = None
+        if "Snippet: Wikipedia" in r['licensing_notes']:
+            m = re.search(r'Source: (http[^ ]*)\.', r['licensing_notes'])
+            if m:
+                r['licensing_link'] = m.group(1)
         displayresults.append(r)
     return displayresults
 

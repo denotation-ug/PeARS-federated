@@ -521,22 +521,26 @@ def run_indexer_manual(url, title, theme, lang, share_url, usercontent, contribu
     return indexed, messages, snippet
 
 
-def index_doc_from_cli(title, doc, theme, lang, contributor, url, notes, host_url):
+def index_doc_from_cli(url, title, theme, lang, share_url, doc, contributor, \
+        chosen_license, host_url, doctype='url', licensing_notes=''):
     """ Index a single doc, to be called by a CLI function."""
-    doctype='url'
-    content=None
-    img=None
+    content = doc
+    img = None
+    notes = None
     u = db.session.query(Urls).filter_by(url=url).first()
     if u:
         return False #URL exists already
     create_pod_npz_pos(contributor, theme, lang)
-    success, text, snippet, idv = \
-            mk_page_vector.compute_vector_local_docs(title, doc, theme, lang, contributor)
+    success, _, snippet, idv = mk_page_vector.compute_vector_local_docs(\
+            title, doc, theme, lang, contributor)
     if success:
         create_pod_in_db(contributor, theme, lang)
+        snippet = snippet.replace('\r\n', ' ')
+        if 'Snippet: Wikipedia' in licensing_notes:
+            snippet = '“'+snippet+'”'
+        #print(">> Snippet", snippet)
         share_url = join(host_url,'api', 'get?url='+url)
-        create_or_replace_url_in_db(url, title, snippet, doctype, idv, theme, notes, content, img, share_url, contributor)
+        create_or_replace_url_in_db(url, title, snippet, doctype, idv, theme, notes,\
+                content, img, share_url, contributor, url_license=chosen_license, licensing_notes=licensing_notes)
         return True
-    else:
-        return False
-
+    return False

@@ -86,6 +86,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 
       <!-- 3. Snippet with highlighted terms -->
       <p class="result-snippet">{{result['snippet']|safe}}</p>
+      <p class="fine-text mb-4">
+      <span>
+	      {% if 'Snippet: Wikipedia' in result['licensing_notes'] %}
+	      <a href={{result['licensing_link']}}>
+	      <img src="{{ url_for('static', filename='wiki-quote-outline.png')}}" class="icon" alt="Wikipedia snippet CC-BY-SA 4" title="Wikipedia snippet CC-BY-SA 4"/></span>
+	      </a>
+              {% endif %}
+      {{result['licensing_notes']}}
+      </p>
 
       <!-- 4. Metadata + actions -->
       <div class="result-meta">
