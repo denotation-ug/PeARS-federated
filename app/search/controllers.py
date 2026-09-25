@@ -131,7 +131,7 @@ def prepare_gui_results(query, results):
                 r["instance_info_text"] = _instance_info_text.format(r["instance"], r["x_instance_info"]["url"], instance_organization_text)
 
         r['licensing_link'] = None
-        if "Snippet: Wikipedia" in r['licensing_notes']:
+        if 'licensing_notes' in r and "Snippet: Wikipedia" in r['licensing_notes']:
             m = re.search(r'Source: (http[^ ]*)\.', r['licensing_notes'])
             if m:
                 r['licensing_link'] = m.group(1)
