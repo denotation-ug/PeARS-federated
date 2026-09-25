@@ -16,7 +16,7 @@ def install_language(lang):
     # this will load the bare page - without the file list
     # we'll just use this to get the cookies so we can spoof the AJAX request that gets the file list
     req_bare_page = requests.get(model_path, allow_redirects=True)
-
+    
     file_list_url = model_path.replace("/tree/", "/tree-commit-info/")
     req_files = requests.get(
         url=file_list_url,
@@ -43,17 +43,17 @@ def install_language(lang):
     )
     model_file_dict = req_files.json()
     date = "0000-00-00"
-    for model_file in model_file_dict:
+    for model_file in model_file_dict['entries']:
         m = re.search(lang+'wiki.16k.*model', model_file)
         if m:
             date = m.group(0).replace(lang+'wiki.16k.','').replace('.model','')
             break
 
-    repo_path = 'https://github.com/possible-worlds-research/pretrained-tokenizers/blob/main/'
+    repo_path = 'https://raw.github.com/possible-worlds-research/pretrained-tokenizers/main/'
     paths = ['models/'+lang+'wiki.16k.'+date+'.model', 'vocabs/'+lang+'wiki.16k.'+date+'.vocab', 'nns/'+lang+'wiki.16k.'+date+'.cos']
 
     for p in paths:
-        path = join(repo_path, p+'?raw=true')
+        path = join(repo_path, p)
         filename = p.split('/')[-1].replace(date+'.','')
         local_file = join(local_dir,filename)
         print("Downloading",path,"to",local_file,"...")
