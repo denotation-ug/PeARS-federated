@@ -67,6 +67,20 @@ def create_user(username, password, email):
     db.session.commit()
     print(username, "has been registered.")
 
+
+@pears.cli.command('change-password')
+@click.argument('username')
+@click.argument('password')
+def change_password(username, password):
+    '''
+    Change the user's password.
+    '''
+    user = User.query.filter_by(username=username).first()
+    user.password=generate_password_hash(password, method='scrypt')
+    db.session.commit()
+    print(username,"has a new password.")
+
+
 @pears.cli.command('print-users')
 def print_users():
     '''
